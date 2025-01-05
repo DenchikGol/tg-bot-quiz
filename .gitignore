@@ -1,0 +1,5 @@
+/tg-venv
+.env
+/__pycache__
+historical_quiz.db
+t_bot.log
