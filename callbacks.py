@@ -2,7 +2,7 @@ import asyncio
 
 from aiogram import F, Router, types
 
-from database import get_quiz_current_score, update_quiz_current_score
+from query_to_database import get_quiz_current_score, update_quiz_current_score
 from utils import check_next_question
 
 callback_router: Router = Router()

@@ -1,78 +1,76 @@
-import logging
+import ydb
 
-import aiosqlite
-
-from env import DB_NAME
+from env import YDB_DATABASE_NAME, YDB_ENDPOINT, YDB_TABLE_QUESTIONS, YDB_TABLE_USER
 
 
-async def create_table():
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            """CREATE TABLE IF NOT EXISTS quiz_state (user_id INTEGER PRIMARY KEY, question_index INTEGER, current_score INTEGER, best_score INTEGER)"""
+async def create_tables(pool: ydb.aio.QuerySessionPool):
+    await pool.execute_with_retries(
+        f"""
+        CREATE TABLE IF NOT EXIST `{YDB_TABLE_USER}` (
+            `user_id` Uint64,
+            `question_index` Uint64,
+            `current_score` Uint64,
+            `best_score` Uint64,
+            PRIMARY KEY (`user_id`)
         )
-        await db.commit()
+        """
+    )
 
-
-async def get_quiz_index(user_id: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        async with db.execute(
-            "SELECT question_index FROM quiz_state WHERE user_id = (?)", (user_id,)
-        ) as cursor:
-            result = await cursor.fetchone()
-            if result[0] is not None:
-                return result[0]
-            else:
-                logging.warning(f"Пользователь {user_id} не найден")
-                return 1
-
-
-async def update_quiz_index(user_id: int, index: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            "UPDATE quiz_state SET question_index = (?) WHERE user_id = (?)",
-            (index, user_id),
+    await pool.execute_with_retries(
+        f"""
+        CREATE TABLE IF NOT EXIST `{YDB_TABLE_QUESTIONS}` (
+            `question_id` Uint64,
+            `question_index` Uint64,
+            `question` Utf8,
+            `right_answer` Utf8,
+            `answers` List<Int32>,
+            `theme` Utf8,
+            PRIMARY KEY (`question_id`)
         )
-        await db.commit()
+        """
+    )
 
 
-async def get_quiz_best_score(user_id: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        async with db.execute(
-            "SELECT best_score FROM quiz_state WHERE user_id = (?)", (user_id,)
-        ) as cursor:
-            result = await cursor.fetchone()
-            if result[0] is not None:
-                return result[0]
-            else:
-                return 0
+async def get_ydb_pool(ydb_endpoint: str, ydb_database: str, timeout=30):
+    ydb_driver_config = ydb.DriverConfig(
+        ydb_endpoint,
+        ydb_database,
+        credentials=ydb.credentials_from_env_variables(),
+        root_certificates=ydb.load_ydb_root_certificate(),
+    )
+    async with ydb.aio.Driver(driver_config=ydb_driver_config) as driver:
+        try:
+            await driver.wait(fail_fast=True, timeout=timeout)
+        except TimeoutError:
+            print("Connect failed to YDB")
+            print("Last reported errors by discovery:")
+            print(driver.discovery_debug_details())
+            exit(1)
+
+        return ydb.aio.QuerySessionPool(driver)
 
 
-async def update_quiz_best_score(user_id: int, best_score: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            "UPDATE quiz_state SET best_score = (?) WHERE user_id = (?)",
-            (best_score, user_id),
-        )
-        await db.commit()
+def _format_kwargs(kwargs: dict):
+    return {"${}".format(key): value for key, value in kwargs.items()}
 
 
-async def get_quiz_current_score(user_id: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        async with db.execute(
-            "SELECT current_score FROM quiz_state WHERE user_id = (?)", (user_id,)
-        ) as cursor:
-            result = await cursor.fetchone()
-            if result[0] is not None:
-                return result[0]
-            else:
-                return 0
-
-
-async def update_quiz_current_score(user_id: int, current_score: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            "UPDATE quiz_state SET current_score = (?) WHERE user_id = (?)",
-            (current_score, user_id),
+async def execute_update_query(pool: ydb.aio.QuerySessionPool, query: str, **kwargs):
+    async def callee(session: ydb.aio.QuerySession):
+        await session.transaction(ydb.SerializableReadWrite()).execute(
+            query=query, parameters=_format_kwargs(kwargs), commit_tx=True
         )
 
-        await db.commit()
+    return await pool.retry_operation_async(callee)
+
+
+async def execute_select_query(pool: ydb.aio.QuerySessionPool, query: str, **kwargs):
+    async def callee(session: ydb.aio.QuerySession):
+        async with session.transaction(ydb.SerializableReadWrite()).execute(
+            query=query, parameters=_format_kwargs(kwargs), commit_tx=True
+        ) as result_sets:
+            return result_sets[0].rows
+
+    return await pool.retry_operation_async(callee)
+
+
+pool = get_ydb_pool(YDB_ENDPOINT, YDB_DATABASE_NAME)

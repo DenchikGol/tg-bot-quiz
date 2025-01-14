@@ -6,14 +6,14 @@ from aiogram import types
 from aiogram.utils.formatting import Bold, Text
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from database import (
+from env import PATH_TO_JSON
+from query_to_database import (
     get_quiz_best_score,
     get_quiz_current_score,
     get_quiz_index,
     update_quiz_best_score,
     update_quiz_index,
 )
-from env import PATH_TO_JSON
 
 
 async def check_next_question(user_id: int, message: types.Message):

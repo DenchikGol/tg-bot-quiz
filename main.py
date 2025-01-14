@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher
 
 from callbacks import callback_router
-from database import create_table
+from database import create_tables
 from env import API_TOKEN
 from handlers import handlers_router
 
@@ -16,7 +16,7 @@ async def main():
     dp = Dispatcher()
     dp.include_routers(handlers_router, callback_router)
     logging.basicConfig(level=logging.INFO, filename="t_bot.log")
-    await create_table()
+    await create_tables()
     await dp.start_polling(bot)
 
 

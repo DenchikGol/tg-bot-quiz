@@ -2,13 +2,13 @@ from aiogram import F, Router, types
 from aiogram.filters.command import Command
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-from database import (
+from env import PATH_TO_JSON
+from query_to_database import (
     get_quiz_best_score,
     get_quiz_index,
     update_quiz_current_score,
     update_quiz_index,
 )
-from env import PATH_TO_JSON
 from utils import get_question, read_json
 
 handlers_router: Router = Router()
