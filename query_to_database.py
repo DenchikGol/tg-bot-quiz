@@ -10,7 +10,7 @@ async def get_quiz_index(user_id):
         FROM `{YDB_TABLE_USER}`
         WHERE user_id == $user_id;
     """
-    results = await execute_select_query(pool, get_user_index, user_id=user_id)
+    results = execute_select_query(pool, get_user_index, user_id=user_id)
 
     if len(results) == 0:
         return 0
@@ -28,7 +28,7 @@ async def update_quiz_index(user_id, question_index):
         VALUES ($user_id, $question_index);
     """
 
-    await execute_update_query(
+    execute_update_query(
         pool,
         set_quiz_state,
         user_id=user_id,
@@ -44,7 +44,7 @@ async def get_quiz_best_score(user_id: int):
         FROM `{YDB_TABLE_USER}`
         WHERE user_id == $user_id;
     """
-    results = await execute_select_query(pool, get_user_best_score, user_id=user_id)
+    results = execute_select_query(pool, get_user_best_score, user_id=user_id)
 
     if (len(results) == 0) or (results[0]["best_score"] is None):
         return 0
@@ -60,7 +60,7 @@ async def update_quiz_best_score(user_id: int, best_score: int):
         VALUES ($user_id, $best_score);
     """
 
-    await execute_update_query(
+    execute_update_query(
         pool,
         set_quiz_best_score,
         user_id=user_id,
@@ -76,7 +76,7 @@ async def get_quiz_current_score(user_id: int):
         FROM `{YDB_TABLE_USER}`
         WHERE user_id == $user_id;
     """
-    results = await execute_select_query(pool, get_user_current_score, user_id=user_id)
+    results = execute_select_query(pool, get_user_current_score, user_id=user_id)
 
     if (len(results) == 0) or (results[0]["current_score"] is None):
         return 0
@@ -92,7 +92,7 @@ async def update_quiz_current_score(user_id: int, current_score: int):
         VALUES ($user_id, $current_score);
     """
 
-    await execute_update_query(
+    execute_update_query(
         pool,
         set_quiz_current_score,
         user_id=user_id,

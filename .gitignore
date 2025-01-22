@@ -3,3 +3,5 @@
 /__pycache__
 historical_quiz.db
 t_bot.log
+tg-bot.zip
+.gitignore
