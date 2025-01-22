@@ -1,9 +1,14 @@
 import ydb
 
-from env import YDB_DATABASE_NAME, YDB_ENDPOINT, YDB_TABLE_QUESTIONS, YDB_TABLE_USER
+from env import (
+    YDB_DATABASE,
+    YDB_ENDPOINT,
+    YDB_TABLE_QUESTIONS,
+    YDB_TABLE_USER,
+)
 
 
-async def create_tables(pool: ydb.aio.QuerySessionPool):
+async def create_tables(pool: ydb.aio.SessionPool):
     await pool.execute_with_retries(
         f"""
         CREATE TABLE IF NOT EXIST `{YDB_TABLE_USER}` (
@@ -16,7 +21,7 @@ async def create_tables(pool: ydb.aio.QuerySessionPool):
         """
     )
 
-    await pool.execute_with_retries(
+    pool.execute_with_retries(
         f"""
         CREATE TABLE IF NOT EXIST `{YDB_TABLE_QUESTIONS}` (
             `question_id` Uint64,
@@ -31,46 +36,43 @@ async def create_tables(pool: ydb.aio.QuerySessionPool):
     )
 
 
-async def get_ydb_pool(ydb_endpoint: str, ydb_database: str, timeout=30):
+def get_ydb_pool(ydb_endpoint, ydb_database, timeout=30):
     ydb_driver_config = ydb.DriverConfig(
         ydb_endpoint,
         ydb_database,
         credentials=ydb.credentials_from_env_variables(),
         root_certificates=ydb.load_ydb_root_certificate(),
     )
-    async with ydb.aio.Driver(driver_config=ydb_driver_config) as driver:
-        try:
-            await driver.wait(fail_fast=True, timeout=timeout)
-        except TimeoutError:
-            print("Connect failed to YDB")
-            print("Last reported errors by discovery:")
-            print(driver.discovery_debug_details())
-            exit(1)
 
-        return ydb.aio.QuerySessionPool(driver)
+    ydb_driver = ydb.Driver(ydb_driver_config)
+    ydb_driver.wait(fail_fast=True, timeout=timeout)
+    return ydb.SessionPool(ydb_driver)
 
 
 def _format_kwargs(kwargs: dict):
     return {"${}".format(key): value for key, value in kwargs.items()}
 
 
-async def execute_update_query(pool: ydb.aio.QuerySessionPool, query: str, **kwargs):
-    async def callee(session: ydb.aio.QuerySession):
-        await session.transaction(ydb.SerializableReadWrite()).execute(
-            query=query, parameters=_format_kwargs(kwargs), commit_tx=True
+def execute_update_query(pool, query, **kwargs):
+    def callee(session):
+        prepared_query = session.prepare(query)
+        session.transaction(ydb.SerializableReadWrite()).execute(
+            prepared_query, _format_kwargs(kwargs), commit_tx=True
         )
 
-    return await pool.retry_operation_async(callee)
+    return pool.retry_operation_sync(callee)
 
 
-async def execute_select_query(pool: ydb.aio.QuerySessionPool, query: str, **kwargs):
-    async def callee(session: ydb.aio.QuerySession):
-        async with session.transaction(ydb.SerializableReadWrite()).execute(
-            query=query, parameters=_format_kwargs(kwargs), commit_tx=True
-        ) as result_sets:
-            return result_sets[0].rows
+def execute_select_query(pool: ydb.SessionPool, query: str, **kwargs):
+    def callee(session):
+        prepared_query = session.prepare(query)
+        result_sets = session.transaction(ydb.SerializableReadWrite()).execute(
+            prepared_query, _format_kwargs(kwargs), commit_tx=True
+        )
+        return result_sets[0].rows
 
-    return await pool.retry_operation_async(callee)
+    return pool.retry_operation_sync(callee)
 
 
-pool = get_ydb_pool(YDB_ENDPOINT, YDB_DATABASE_NAME)
+# Зададим настройки базы данных
+pool = get_ydb_pool(YDB_ENDPOINT, YDB_DATABASE)
