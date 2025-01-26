@@ -8,10 +8,10 @@ from env import (
 )
 
 
-async def create_tables(pool: ydb.aio.SessionPool):
+async def create_tables(pool: ydb.SessionPool):
     await pool.execute_with_retries(
         f"""
-        CREATE TABLE IF NOT EXIST `{YDB_TABLE_USER}` (
+        CREATE TABLE IF NOT EXISTS `{YDB_TABLE_USER}` (
             `user_id` Uint64,
             `question_index` Uint64,
             `current_score` Uint64,
@@ -23,12 +23,12 @@ async def create_tables(pool: ydb.aio.SessionPool):
 
     pool.execute_with_retries(
         f"""
-        CREATE TABLE IF NOT EXIST `{YDB_TABLE_QUESTIONS}` (
+        CREATE TABLE IF NOT EXISTS `{YDB_TABLE_QUESTIONS}` (
             `question_id` Uint64,
             `question_index` Uint64,
             `question` Utf8,
             `right_answer` Utf8,
-            `answers` List<Int32>,
+            `answers` List<Utf8>,
             `theme` Utf8,
             PRIMARY KEY (`question_id`)
         )
@@ -53,7 +53,7 @@ def _format_kwargs(kwargs: dict):
     return {"${}".format(key): value for key, value in kwargs.items()}
 
 
-def execute_update_query(pool, query, **kwargs):
+def execute_update_query(pool: ydb.SessionPool, query: str, **kwargs):
     def callee(session):
         prepared_query = session.prepare(query)
         session.transaction(ydb.SerializableReadWrite()).execute(
@@ -74,5 +74,4 @@ def execute_select_query(pool: ydb.SessionPool, query: str, **kwargs):
     return pool.retry_operation_sync(callee)
 
 
-# Зададим настройки базы данных
 pool = get_ydb_pool(YDB_ENDPOINT, YDB_DATABASE)

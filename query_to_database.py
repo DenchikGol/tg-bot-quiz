@@ -1,5 +1,5 @@
 from database import execute_select_query, execute_update_query, pool
-from env import YDB_TABLE_USER
+from env import YDB_TABLE_QUESTIONS, YDB_TABLE_USER
 
 
 async def get_quiz_index(user_id):
@@ -98,3 +98,29 @@ async def update_quiz_current_score(user_id: int, current_score: int):
         user_id=user_id,
         current_score=current_score,
     )
+
+
+async def get_question_row(question_index: int, theme: str = "Исторические события."):
+    query_to_get_question = f"""
+        DECLARE $question_index AS Uint64;
+        DECLARE $theme AS Utf8;
+
+        SELECT *
+        FROM `{YDB_TABLE_QUESTIONS}`
+        WHERE question_index == $question_index AND theme == theme;
+        """
+    result_row = execute_select_query(
+        pool, query_to_get_question, question_index, theme
+    )
+    return result_row[0]
+
+
+async def get_quiz_length(theme: str):
+    query_to_get_length = f"""
+    DECLARE $theme AS Utf8;
+    
+    SELECT COUNT(*) AS length FROM {YDB_TABLE_QUESTIONS} WHERE theme == $theme"
+    """
+
+    result = execute_select_query(pool, query_to_get_length, theme)
+    return result[0]["length"]

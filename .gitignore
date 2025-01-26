@@ -5,3 +5,4 @@ historical_quiz.db
 t_bot.log
 tg-bot.zip
 .gitignore
+data_to_ydb.py
