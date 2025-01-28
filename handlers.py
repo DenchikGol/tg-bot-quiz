@@ -56,7 +56,7 @@ async def cmd_continue_quiz(message: types.Message):
     if quiz_len <= current_index:
         await new_quiz(message)
     else:
-        await continue_quiz(message)
+        await get_question(message, message.from_user.id, theme, quiz_len)
 
 
 # Хэндлер на команду /score
@@ -70,15 +70,12 @@ async def cmd_score_quiz(message: types.Message):
 
 async def new_quiz(message: types.Message):
     user_id = message.from_user.id
-    current_question_index = 0
+    current_question_index = 1
+    theme = "Исторические события."
+    quiz_len = await get_quiz_length(theme)
     await update_quiz_index(user_id, current_question_index)
     await update_quiz_current_score(user_id, 0)
-    await get_question(message, user_id)
-
-
-async def continue_quiz(message: types.Message):
-    user_id = message.from_user.id
-    await get_question(message, user_id)
+    await get_question(message, user_id, theme, quiz_len)
 
 
 async def stop_quiz(message: types.Message):

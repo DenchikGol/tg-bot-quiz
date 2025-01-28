@@ -110,7 +110,10 @@ async def get_question_row(question_index: int, theme: str = "Историчес
         WHERE question_index == $question_index AND theme == theme;
         """
     result_row = execute_select_query(
-        pool, query_to_get_question, question_index, theme
+        pool,
+        query_to_get_question,
+        question_index=question_index,
+        theme=theme,
     )
     return result_row[0]
 
@@ -119,8 +122,8 @@ async def get_quiz_length(theme: str) -> int:
     query_to_get_length = f"""
     DECLARE $theme AS Utf8;
     
-    SELECT COUNT(*) AS length FROM {YDB_TABLE_QUESTIONS} WHERE theme == $theme"
+    SELECT COUNT(*) AS length FROM {YDB_TABLE_QUESTIONS} WHERE theme == $theme;
     """
 
-    result = execute_select_query(pool, query_to_get_length, theme)
+    result = execute_select_query(pool, query_to_get_length, theme=theme)
     return result[0]["length"]
