@@ -2,14 +2,14 @@ from aiogram import F, Router, types
 from aiogram.filters.command import Command
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-from env import PATH_TO_JSON
 from query_to_database import (
     get_quiz_best_score,
     get_quiz_index,
+    get_quiz_length,
     update_quiz_current_score,
     update_quiz_index,
 )
-from utils import get_question, read_json
+from utils import get_question
 
 handlers_router: Router = Router()
 
@@ -51,8 +51,9 @@ async def cmd_stop_quiz(message: types.Message):
 async def cmd_continue_quiz(message: types.Message):
     await message.answer("Продолжаем...")
     current_index = await get_quiz_index(message.from_user.id)
-    data = read_json(PATH_TO_JSON)
-    if len(data["questions"]) <= current_index:
+    theme = "Исторические события."
+    quiz_len = await get_quiz_length(theme)
+    if quiz_len <= current_index:
         await new_quiz(message)
     else:
         await continue_quiz(message)

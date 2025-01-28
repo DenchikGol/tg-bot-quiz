@@ -36,7 +36,7 @@ async def update_quiz_index(user_id, question_index):
     )
 
 
-async def get_quiz_best_score(user_id: int):
+async def get_quiz_best_score(user_id: int) -> int:
     get_user_best_score = f"""
         DECLARE $user_id AS Uint64;
 
@@ -68,7 +68,7 @@ async def update_quiz_best_score(user_id: int, best_score: int):
     )
 
 
-async def get_quiz_current_score(user_id: int):
+async def get_quiz_current_score(user_id: int) -> int:
     get_user_current_score = f"""
         DECLARE $user_id AS Uint64;
 
@@ -115,7 +115,7 @@ async def get_question_row(question_index: int, theme: str = "Историчес
     return result_row[0]
 
 
-async def get_quiz_length(theme: str):
+async def get_quiz_length(theme: str) -> int:
     query_to_get_length = f"""
     DECLARE $theme AS Utf8;
     
